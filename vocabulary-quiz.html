@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <title>Vocabulary Quiz - NYT Crossword</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1b1e2f 0%, #000000 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .stats {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            color: white;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #4facfe;
+        }
+
+        .quiz-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .word-display {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .word-text {
+            font-size: 3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .word-example {
+            font-size: 0.95em;
+            color: #666;
+            font-style: italic;
+            line-height: 1.6;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .question {
+            font-size: 1.3em;
+            color: #444;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .choices {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .choice {
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+            color: #333;
+            line-height: 1.5;
+        }
+
+        .choice:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .choice.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        }
+
+        .choice.correct {
+            border-color: #4cd964;
+            background: rgba(76, 217, 100, 0.1);
+            animation: correctPulse 0.5s ease;
+        }
+
+        .choice.incorrect {
+            border-color: #ff3b30;
+            background: rgba(255, 59, 48, 0.1);
+            animation: shake 0.5s ease;
+        }
+
+        .choice.disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        @keyframes correctPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+            display: none;
+        }
+
+        .feedback.show {
+            display: block;
+        }
+
+        .feedback.correct {
+            background: rgba(76, 217, 100, 0.2);
+            color: #2d7a3e;
+            border: 2px solid #4cd964;
+        }
+
+        .feedback.incorrect {
+            background: rgba(255, 59, 48, 0.2);
+            color: #c0392b;
+            border: 2px solid #ff3b30;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 35px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.3em;
+            padding: 40px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            .word-text {
+                font-size: 2.2em;
+            }
+            .quiz-card {
+                padding: 25px;
+            }
+            .choice {
+                padding: 15px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Vocabulary Quiz</h1>
+            <p>Match words to their definitions</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">Words Seen</div>
+                <div class="stat-value" id="words-seen">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Correct</div>
+                <div class="stat-value" id="correct-count">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Success Rate</div>
+                <div class="stat-value" id="success-rate">0%</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Current Streak</div>
+                <div class="stat-value" id="streak">0</div>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div id="loading" class="loading">Loading vocabulary...</div>
+
+        <div id="quiz-container" style="display: none;">
+            <div class="quiz-card">
+                <div class="word-display">
+                    <div class="word-text" id="word-text">WORD</div>
+                    <div class="word-example" id="word-example"></div>
+                </div>
+
+                <div class="question">Select the correct definition:</div>
+
+                <div class="choices" id="choices"></div>
+
+                <div class="feedback" id="feedback"></div>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-secondary" onclick="window.location.href='index.html'">← Back</button>
+                <button class="btn" id="next-btn" onclick="nextQuestion()" disabled>Next Question →</button>
+                <button class="btn btn-secondary" onclick="resetProgress()">Reset Progress</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let vocabulary = [];
+        let wordStats = {};
+        let currentWord = null;
+        let totalAnswered = 0;
+        let correctAnswered = 0;
+        let currentStreak = 0;
+        let answered = false;
+
+        const STORAGE_KEY = 'vocab_quiz_stats';
+
+        // Load vocabulary from CSV
+        async function loadVocabulary() {
+            try {
+                const response = await fetch('study/vocabulary.csv');
+                const csvText = await response.text();
+                const lines = csvText.split('\n');
+
+                vocabulary = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line) {
+                        const match = line.match(/^([^,]+),("(?:[^"]|"")*"|[^,]*),("(?:[^"]|"")*"|[^,]*)$/);
+                        if (match) {
+                            const word = match[1].trim();
+                            const definition = match[2].replace(/^"|"$/g, '').replace(/""/g, '"').trim();
+                            const example = match[3].replace(/^"|"$/g, '').replace(/""/g, '"').trim();
+                            
+                            vocabulary.push({ word, definition, example });
+                        }
+                    }
+                }
+
+                loadStats();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('quiz-container').style.display = 'block';
+                nextQuestion();
+            } catch (error) {
+                console.error('Error loading vocabulary:', error);
+                document.getElementById('loading').textContent = 'Error loading vocabulary. Please refresh the page.';
+            }
+        }
+
+        // Load stats from localStorage
+        function loadStats() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const data = JSON.parse(saved);
+                wordStats = data.wordStats || {};
+                totalAnswered = data.totalAnswered || 0;
+                correctAnswered = data.correctAnswered || 0;
+                currentStreak = data.currentStreak || 0;
+            } else {
+                wordStats = {};
+                vocabulary.forEach(word => {
+                    wordStats[word.word] = { seen: 0, correct: 0 };
+                });
+            }
+            updateStatsDisplay();
+        }
+
+        // Save stats to localStorage
+        function saveStats() {
+            const data = {
+                wordStats,
+                totalAnswered,
+                correctAnswered,
+                currentStreak
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            updateStatsDisplay();
+        }
+
+        // Update stats display
+        function updateStatsDisplay() {
+            document.getElementById('words-seen').textContent = totalAnswered;
+            document.getElementById('correct-count').textContent = correctAnswered;
+            const rate = totalAnswered > 0 ? Math.round((correctAnswered / totalAnswered) * 100) : 0;
+            document.getElementById('success-rate').textContent = rate + '%';
+            document.getElementById('streak').textContent = currentStreak;
+        }
+
+        // Select next word using weighted algorithm
+        function selectNextWord() {
+            // Calculate priority scores for each word
+            const wordPriorities = vocabulary.map(word => {
+                const stats = wordStats[word.word] || { seen: 0, correct: 0 };
+                
+                // Priority factors:
+                // 1. Words never seen get highest priority
+                if (stats.seen === 0) return { word, priority: 1000 };
+                
+                // 2. Calculate success rate (lower is higher priority)
+                const successRate = stats.correct / stats.seen;
+                
+                // 3. Words seen less get bonus
+                const seenBonus = 100 / (stats.seen + 1);
+                
+                // 4. Lower success rate = higher priority
+                const accuracyPriority = (1 - successRate) * 50;
+                
+                const priority = seenBonus + accuracyPriority;
+                return { word, priority };
+            });
+
+            // Sort by priority (highest first)
+            wordPriorities.sort((a, b) => b.priority - a.priority);
+
+            // Use weighted random selection from top 20% to add variety
+            const topCount = Math.max(Math.floor(wordPriorities.length * 0.2), 10);
+            const topWords = wordPriorities.slice(0, topCount);
+            
+            const randomIndex = Math.floor(Math.random() * topWords.length);
+            return topWords[randomIndex].word;
+        }
+
+        // Generate question with multiple choice answers
+        function nextQuestion() {
+            answered = false;
+            document.getElementById('next-btn').disabled = true;
+            document.getElementById('feedback').classList.remove('show', 'correct', 'incorrect');
+
+            currentWord = selectNextWord();
+            
+            // Initialize stats for this word if not exists
+            if (!wordStats[currentWord.word]) {
+                wordStats[currentWord.word] = { seen: 0, correct: 0 };
+            }
+
+            // Display word and example
+            document.getElementById('word-text').textContent = currentWord.word.toUpperCase();
+            document.getElementById('word-example').textContent = currentWord.example ? `"${currentWord.example}"` : '';
+
+            // Generate choices: 1 correct + 3 random wrong
+            const choices = [currentWord];
+            const wrongChoices = vocabulary.filter(w => w.word !== currentWord.word);
+            
+            // Randomly select 3 wrong answers
+            for (let i = 0; i < 3; i++) {
+                const randomIndex = Math.floor(Math.random() * wrongChoices.length);
+                choices.push(wrongChoices[randomIndex]);
+                wrongChoices.splice(randomIndex, 1);
+            }
+
+            // Shuffle choices
+            for (let i = choices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [choices[i], choices[j]] = [choices[j], choices[i]];
+            }
+
+            // Display choices
+            const choicesContainer = document.getElementById('choices');
+            choicesContainer.innerHTML = '';
+            choices.forEach((choice, index) => {
+                const div = document.createElement('div');
+                div.className = 'choice';
+                div.textContent = choice.definition;
+                div.onclick = () => selectChoice(choice, div);
+                choicesContainer.appendChild(div);
+            });
+
+            // Update progress bar
+            const progress = totalAnswered / vocabulary.length * 100;
+            document.getElementById('progress-fill').style.width = Math.min(progress, 100) + '%';
+        }
+
+        // Handle choice selection
+        function selectChoice(choice, element) {
+            if (answered) return;
+
+            answered = true;
+            const allChoices = document.querySelectorAll('.choice');
+            allChoices.forEach(c => c.classList.add('disabled'));
+
+            const isCorrect = choice.word === currentWord.word;
+            
+            // Update stats
+            wordStats[currentWord.word].seen++;
+            totalAnswered++;
+            
+            if (isCorrect) {
+                element.classList.add('correct');
+                wordStats[currentWord.word].correct++;
+                correctAnswered++;
+                currentStreak++;
+                
+                document.getElementById('feedback').textContent = '✓ Correct! Great job!';
+                document.getElementById('feedback').classList.add('show', 'correct');
+            } else {
+                element.classList.add('incorrect');
+                currentStreak = 0;
+                
+                // Highlight correct answer
+                allChoices.forEach(c => {
+                    if (c.textContent === currentWord.definition) {
+                        c.classList.add('correct');
+                    }
+                });
+                
+                document.getElementById('feedback').textContent = `✗ Incorrect. The correct definition is: "${currentWord.definition}"`;
+                document.getElementById('feedback').classList.add('show', 'incorrect');
+            }
+
+            saveStats();
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        // Reset progress
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEY);
+                totalAnswered = 0;
+                correctAnswered = 0;
+                currentStreak = 0;
+                wordStats = {};
+                vocabulary.forEach(word => {
+                    wordStats[word.word] = { seen: 0, correct: 0 };
+                });
+                saveStats();
+                nextQuestion();
+            }
+        }
+
+        // Start the quiz
+        loadVocabulary();
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('next-btn').disabled) {
+                nextQuestion();
+            } else if (e.key >= '1' && e.key <= '4' && !answered) {
+                const choices = document.querySelectorAll('.choice');
+                const index = parseInt(e.key) - 1;
+                if (choices[index]) {
+                    choices[index].click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
