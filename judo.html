@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <title>Judo Flashcards</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .landing {
+            text-align: center;
+        }
+
+        .landing h1 {
+            color: white;
+            font-size: 3em;
+            margin-bottom: 15px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .landing p {
+            color: white;
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 50px;
+        }
+
+        .category-select {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        select {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #e94560;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.3);
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #e94560 0%, #0f3460 100%);
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.6);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-home {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            font-size: 1em;
+            margin-top: 20px;
+        }
+
+        .flashcards {
+            display: none;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .controls .btn {
+            padding: 10px 20px;
+            font-size: 1em;
+        }
+
+        .flashcard-container {
+            perspective: 1000px;
+            margin-bottom: 20px;
+        }
+
+        .flashcard {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .card-front {
+            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+            color: #333;
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #e94560 0%, #0f3460 100%);
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        .card-text {
+            font-size: 1.5em;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+
+        .answer-text {
+            font-size: 1.8em;
+            font-weight: bold;
+            line-height: 1.4;
+        }
+
+        .guess-input {
+            width: 100%;
+            max-width: 300px;
+            background: #dedede;
+            padding: 15px;
+            font-size: 1.2em;
+            text-align: center;
+            border: 3px solid #e94560;
+            border-radius: 8px;
+            margin-top: 30px;
+            outline: none;
+        }
+
+        .guess-input:focus {
+            border-color: #0f3460;
+        }
+
+        .feedback {
+            margin-top: 20px;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.3em;
+            font-weight: bold;
+            display: none;
+        }
+
+        .feedback.correct {
+            background: rgba(76, 217, 100, 0.9);
+            color: white;
+        }
+
+        .feedback.incorrect {
+            background: rgba(255, 59, 48, 0.9);
+            color: white;
+        }
+
+        .progress {
+            text-align: center;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e94560 0%, #0f3460 100%);
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .navigation .btn {
+            padding: 12px 25px;
+            font-size: 1em;
+        }
+
+        @media (max-width: 480px) {
+            .landing h1 {
+                font-size: 2.2em;
+            }
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .flashcard {
+                height: 300px;
+            }
+            .card-text {
+                font-size: 1.2em;
+            }
+            .answer-text {
+                font-size: 1.4em;
+            }
+            .navigation .btn {
+                padding: 10px 15px;
+                font-size: 0.9em;
+            }
+            .controls {
+                gap: 6px;
+            }
+            .controls .btn {
+                padding: 8px 10px;
+                font-size: 0.75em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="landing" class="landing">
+            <h1>Judo Flashcards</h1>
+            <p>Study for your belt test!</p>
+
+            <div class="category-select">
+                <select id="category">
+                    <option value="study/judo_perform.csv">Perform (41)</option>
+                    <option value="study/judo_recite.csv">Recite (194)</option>
+                </select>
+
+                <button class="btn" onclick="startPractice()">Start Practice</button>
+                <br>
+                <button class="btn btn-home" onclick="window.location.href='index.html'">Back to Crosswords</button>
+            </div>
+        </div>
+
+        <div id="flashcards" class="flashcards">
+            <div class="header">
+                <h1>Judo Flashcards</h1>
+                <p id="category-name">All</p>
+            </div>
+
+            <div class="controls">
+                <button class="btn btn-secondary" onclick="goBack()">Back</button>
+                <button class="btn btn-secondary" onclick="loadCards()">Shuffle</button>
+                <button class="btn btn-secondary" onclick="resetProgress()">Reset</button>
+            </div>
+
+            <div id="app">
+                <div class="progress">
+                    <div>Card <span id="current">1</span> of <span id="total">0</span></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+
+                <div class="flashcard-container">
+                    <div class="flashcard" id="flashcard" onclick="handleCardClick(event)">
+                        <div class="card-face card-front">
+                            <div class="card-text" id="front-text">Click "Shuffle" to begin!</div>
+                            <input type="text" class="guess-input" id="guess-input" autocomplete="off" placeholder="Type answer...">
+                        </div>
+                        <div class="card-face card-back">
+                            <div class="answer-text" id="back-text">Answer</div>
+                            <div id="feedback" class="feedback"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="navigation">
+                    <button class="btn" onclick="previousCard()">Prev</button>
+                    <button class="btn" onclick="flipCard()">Flip</button>
+                    <button class="btn" onclick="nextCard()">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let flashcards = [];
+        let currentIndex = 0;
+        let isFlipped = false;
+        let currentFile = 'study/judo_perform.csv';
+
+        const categoryNames = {
+            'study/judo_perform.csv': 'Perform',
+            'study/judo_recite.csv': 'Recite'
+        };
+
+        function startPractice() {
+            currentFile = document.getElementById('category').value;
+            document.getElementById('landing').style.display = 'none';
+            document.getElementById('flashcards').style.display = 'block';
+            document.getElementById('category-name').textContent = categoryNames[currentFile];
+            loadCards();
+        }
+
+        function goBack() {
+            document.getElementById('flashcards').style.display = 'none';
+            document.getElementById('landing').style.display = 'block';
+        }
+
+        async function loadCards() {
+            try {
+                const response = await fetch(currentFile);
+                const csvText = await response.text();
+                const lines = csvText.split('\n');
+
+                flashcards = [];
+
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line) {
+                        const values = parseCSVLine(line);
+                        if (values.length >= 2) {
+                            flashcards.push({
+                                front: values[0],
+                                back: values[1]
+                            });
+                        }
+                    }
+                }
+
+                shuffleArray(flashcards);
+                currentIndex = 0;
+                updateCard();
+                updateProgress();
+                focusInput();
+            } catch (error) {
+                console.error('Error loading flashcards:', error);
+            }
+        }
+
+        function parseCSVLine(line) {
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            values.push(current.trim());
+            return values;
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function focusInput() {
+            setTimeout(() => {
+                const input = document.getElementById('guess-input');
+                if (input) input.focus();
+            }, 100);
+        }
+
+        function checkAnswer() {
+            const input = document.getElementById('guess-input');
+            const guess = input.value.trim().toLowerCase();
+            const card = flashcards[currentIndex];
+            const feedbackEl = document.getElementById('feedback');
+
+            const isCorrect = guess === card.back.toLowerCase();
+
+            feedbackEl.textContent = isCorrect ? 'Correct!' : 'Incorrect';
+            feedbackEl.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
+            feedbackEl.style.display = 'block';
+
+            document.getElementById('flashcard').classList.add('flipped');
+            isFlipped = true;
+        }
+
+        function updateCard() {
+            if (flashcards.length === 0) return;
+
+            const flashcard = document.getElementById('flashcard');
+            const input = document.getElementById('guess-input');
+            const feedbackEl = document.getElementById('feedback');
+
+            input.value = '';
+            feedbackEl.style.display = 'none';
+
+            if (isFlipped) {
+                flashcard.classList.remove('flipped');
+                isFlipped = false;
+                setTimeout(() => {
+                    updateCardContent();
+                    focusInput();
+                }, 600);
+            } else {
+                updateCardContent();
+                focusInput();
+            }
+        }
+
+        function updateCardContent() {
+            const card = flashcards[currentIndex];
+            document.getElementById('front-text').textContent = card.front;
+            document.getElementById('back-text').textContent = card.back;
+        }
+
+        function flipCard() {
+            const flashcard = document.getElementById('flashcard');
+            const input = document.getElementById('guess-input');
+
+            if (!isFlipped) {
+                checkAnswer();
+            } else {
+                flashcard.classList.remove('flipped');
+                isFlipped = false;
+                input.value = '';
+                document.getElementById('feedback').style.display = 'none';
+                focusInput();
+            }
+        }
+
+        function updateProgress() {
+            if (flashcards.length === 0) return;
+            document.getElementById('current').textContent = currentIndex + 1;
+            document.getElementById('total').textContent = flashcards.length;
+            const progress = ((currentIndex + 1) / flashcards.length) * 100;
+            document.getElementById('progress-fill').style.width = progress + '%';
+        }
+
+        function previousCard() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateCard();
+                updateProgress();
+            }
+        }
+
+        function nextCard() {
+            if (currentIndex < flashcards.length - 1) {
+                currentIndex++;
+                updateCard();
+                updateProgress();
+            }
+        }
+
+        function resetProgress() {
+            currentIndex = 0;
+            updateCard();
+            updateProgress();
+        }
+
+        function handleCardClick(event) {
+            if (event.target.id === 'guess-input') return;
+            if (!isFlipped) {
+                checkAnswer();
+            } else {
+                nextCard();
+            }
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (document.getElementById('flashcards').style.display === 'block') {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    if (!isFlipped) {
+                        checkAnswer();
+                    } else {
+                        nextCard();
+                    }
+                } else if (event.key === 'ArrowLeft') {
+                    previousCard();
+                } else if (event.key === 'ArrowRight') {
+                    nextCard();
+                }
+            } else if (event.key === 'Enter') {
+                startPractice();
+            }
+        });
+    </script>
+</body>
+</html>
