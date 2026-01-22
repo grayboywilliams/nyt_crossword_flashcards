@@ -189,42 +189,44 @@
             font-size: 1.8em;
             font-weight: bold;
             line-height: 1.4;
+            margin-bottom: 30px;
         }
 
-        .guess-input {
-            width: 100%;
-            max-width: 300px;
-            background: #dedede;
-            padding: 15px;
-            font-size: 1.2em;
-            text-align: center;
-            border: 3px solid #e94560;
-            border-radius: 8px;
-            margin-top: 30px;
-            outline: none;
+        .grade-buttons {
+            display: flex;
+            gap: 15px;
         }
 
-        .guess-input:focus {
-            border-color: #0f3460;
+        .btn-correct {
+            background: linear-gradient(135deg, #4cd964 0%, #2e8b57 100%);
+            padding: 12px 30px;
         }
 
-        .feedback {
+        .btn-incorrect {
+            background: linear-gradient(135deg, #ff3b30 0%, #c0392b 100%);
+            padding: 12px 30px;
+        }
+
+        .streak-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .streak-good {
+            color: #4cd964;
+        }
+
+        .streak-bad {
+            color: #ff6b6b;
+        }
+
+        .tap-hint {
+            font-size: 0.9em;
+            opacity: 0.6;
             margin-top: 20px;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-size: 1.3em;
-            font-weight: bold;
-            display: none;
-        }
-
-        .feedback.correct {
-            background: rgba(76, 217, 100, 0.9);
-            color: white;
-        }
-
-        .feedback.incorrect {
-            background: rgba(255, 59, 48, 0.9);
-            color: white;
         }
 
         .progress {
@@ -249,17 +251,12 @@
             border-radius: 4px;
         }
 
-        .navigation {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        .navigation .btn {
-            padding: 12px 25px;
-            font-size: 1em;
+        .stats {
+            text-align: center;
+            color: white;
+            margin-top: 15px;
+            font-size: 0.9em;
+            opacity: 0.8;
         }
 
         @media (max-width: 480px) {
@@ -278,16 +275,20 @@
             .answer-text {
                 font-size: 1.4em;
             }
-            .navigation .btn {
-                padding: 10px 15px;
-                font-size: 0.9em;
-            }
             .controls {
                 gap: 6px;
             }
             .controls .btn {
                 padding: 8px 10px;
                 font-size: 0.75em;
+            }
+            .grade-buttons {
+                flex-direction: row;
+                gap: 10px;
+            }
+            .btn-correct, .btn-incorrect {
+                padding: 10px 20px;
+                font-size: 1em;
             }
         }
     </style>
@@ -313,13 +314,13 @@
         <div id="flashcards" class="flashcards">
             <div class="header">
                 <h1>Judo Flashcards</h1>
-                <p id="category-name">All</p>
+                <p id="category-name">Perform</p>
             </div>
 
             <div class="controls">
                 <button class="btn btn-secondary" onclick="goBack()">Back</button>
-                <button class="btn btn-secondary" onclick="loadCards()">Shuffle</button>
-                <button class="btn btn-secondary" onclick="resetProgress()">Reset</button>
+                <button class="btn btn-secondary" onclick="startNewRound()">New Round</button>
+                <button class="btn btn-secondary" onclick="clearHistory()">Clear History</button>
             </div>
 
             <div id="app">
@@ -333,21 +334,21 @@
                 <div class="flashcard-container">
                     <div class="flashcard" id="flashcard" onclick="handleCardClick(event)">
                         <div class="card-face card-front">
-                            <div class="card-text" id="front-text">Click "Shuffle" to begin!</div>
-                            <input type="text" class="guess-input" id="guess-input" autocomplete="off" placeholder="Type answer...">
+                            <div class="streak-indicator" id="front-streak"></div>
+                            <div class="card-text" id="front-text">Tap to begin</div>
+                            <div class="tap-hint">Tap to reveal answer</div>
                         </div>
                         <div class="card-face card-back">
                             <div class="answer-text" id="back-text">Answer</div>
-                            <div id="feedback" class="feedback"></div>
+                            <div class="grade-buttons">
+                                <button class="btn btn-incorrect" onclick="gradeCard(event, false)">Missed</button>
+                                <button class="btn btn-correct" onclick="gradeCard(event, true)">Got it</button>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="navigation">
-                    <button class="btn" onclick="previousCard()">Prev</button>
-                    <button class="btn" onclick="flipCard()">Flip</button>
-                    <button class="btn" onclick="nextCard()">Next</button>
-                </div>
+                <div class="stats" id="stats"></div>
             </div>
         </div>
     </div>
@@ -357,17 +358,89 @@
         let currentIndex = 0;
         let isFlipped = false;
         let currentFile = 'study/judo_perform.csv';
+        let history = {};  // cardId -> array of last 5 results (true/false)
+        const HISTORY_LENGTH = 5;
+        const STORAGE_KEY = 'judo_flashcard_history';
 
         const categoryNames = {
             'study/judo_perform.csv': 'Perform',
             'study/judo_recite.csv': 'Recite'
         };
 
+        function loadHistory() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                history = JSON.parse(stored);
+            }
+        }
+
+        function saveHistory() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        }
+
+        function getCardId(card) {
+            return card.front + '::' + card.back;
+        }
+
+        function getCardScore(card) {
+            const id = getCardId(card);
+            const results = history[id] || [];
+            if (results.length === 0) return 0.5;  // neutral for unseen cards
+
+            // Weight recent results more heavily
+            let score = 0;
+            let weight = 0;
+            for (let i = 0; i < results.length; i++) {
+                const w = results.length - i;  // more recent = higher weight
+                score += results[i] ? w : 0;
+                weight += w;
+            }
+            return score / weight;
+        }
+
+        function getStreakDisplay(card) {
+            const id = getCardId(card);
+            const results = history[id] || [];
+            if (results.length === 0) return '';
+
+            // Count recent streak
+            let streak = 0;
+            let isCorrect = results[0];
+            for (const r of results) {
+                if (r === isCorrect) streak++;
+                else break;
+            }
+
+            if (streak >= 2) {
+                if (isCorrect) {
+                    return `<span class="streak-good">${streak} correct</span>`;
+                } else {
+                    return `<span class="streak-bad">${streak} missed</span>`;
+                }
+            }
+            return '';
+        }
+
+        function sortCardsByPriority() {
+            // Sort by score (lower = needs more practice)
+            flashcards.sort((a, b) => getCardScore(a) - getCardScore(b));
+
+            // Add some randomization within similar scores
+            for (let i = 0; i < flashcards.length - 1; i++) {
+                const scoreA = getCardScore(flashcards[i]);
+                const scoreB = getCardScore(flashcards[i + 1]);
+                if (Math.abs(scoreA - scoreB) < 0.1 && Math.random() < 0.3) {
+                    [flashcards[i], flashcards[i + 1]] = [flashcards[i + 1], flashcards[i]];
+                }
+            }
+        }
+
         function startPractice() {
             currentFile = document.getElementById('category').value;
             document.getElementById('landing').style.display = 'none';
             document.getElementById('flashcards').style.display = 'block';
             document.getElementById('category-name').textContent = categoryNames[currentFile];
+            loadHistory();
             loadCards();
         }
 
@@ -397,13 +470,29 @@
                     }
                 }
 
-                shuffleArray(flashcards);
+                sortCardsByPriority();
                 currentIndex = 0;
                 updateCard();
                 updateProgress();
-                focusInput();
+                updateStats();
             } catch (error) {
                 console.error('Error loading flashcards:', error);
+            }
+        }
+
+        function startNewRound() {
+            sortCardsByPriority();
+            currentIndex = 0;
+            updateCard();
+            updateProgress();
+            updateStats();
+        }
+
+        function clearHistory() {
+            if (confirm('Clear all progress history?')) {
+                history = {};
+                saveHistory();
+                startNewRound();
             }
         }
 
@@ -427,56 +516,50 @@
             return values;
         }
 
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-        }
+        function gradeCard(event, correct) {
+            event.stopPropagation();
 
-        function focusInput() {
-            setTimeout(() => {
-                const input = document.getElementById('guess-input');
-                if (input) input.focus();
-            }, 100);
-        }
-
-        function checkAnswer() {
-            const input = document.getElementById('guess-input');
-            const guess = input.value.trim().toLowerCase();
             const card = flashcards[currentIndex];
-            const feedbackEl = document.getElementById('feedback');
+            const id = getCardId(card);
 
-            const isCorrect = guess === card.back.toLowerCase();
+            if (!history[id]) {
+                history[id] = [];
+            }
 
-            feedbackEl.textContent = isCorrect ? 'Correct!' : 'Incorrect';
-            feedbackEl.className = 'feedback ' + (isCorrect ? 'correct' : 'incorrect');
-            feedbackEl.style.display = 'block';
+            // Add result to front (most recent)
+            history[id].unshift(correct);
 
-            document.getElementById('flashcard').classList.add('flipped');
-            isFlipped = true;
+            // Keep only last N results
+            if (history[id].length > HISTORY_LENGTH) {
+                history[id].pop();
+            }
+
+            saveHistory();
+
+            // Move to next card
+            if (currentIndex < flashcards.length - 1) {
+                currentIndex++;
+                updateCard();
+                updateProgress();
+                updateStats();
+            } else {
+                // End of round
+                alert('Round complete! Starting new round with cards prioritized by difficulty.');
+                startNewRound();
+            }
         }
 
         function updateCard() {
             if (flashcards.length === 0) return;
 
             const flashcard = document.getElementById('flashcard');
-            const input = document.getElementById('guess-input');
-            const feedbackEl = document.getElementById('feedback');
-
-            input.value = '';
-            feedbackEl.style.display = 'none';
 
             if (isFlipped) {
                 flashcard.classList.remove('flipped');
                 isFlipped = false;
-                setTimeout(() => {
-                    updateCardContent();
-                    focusInput();
-                }, 600);
+                setTimeout(updateCardContent, 600);
             } else {
                 updateCardContent();
-                focusInput();
             }
         }
 
@@ -484,20 +567,14 @@
             const card = flashcards[currentIndex];
             document.getElementById('front-text').textContent = card.front;
             document.getElementById('back-text').textContent = card.back;
+            document.getElementById('front-streak').innerHTML = getStreakDisplay(card);
         }
 
         function flipCard() {
             const flashcard = document.getElementById('flashcard');
-            const input = document.getElementById('guess-input');
-
             if (!isFlipped) {
-                checkAnswer();
-            } else {
-                flashcard.classList.remove('flipped');
-                isFlipped = false;
-                input.value = '';
-                document.getElementById('feedback').style.display = 'none';
-                focusInput();
+                flashcard.classList.add('flipped');
+                isFlipped = true;
             }
         }
 
@@ -509,50 +586,40 @@
             document.getElementById('progress-fill').style.width = progress + '%';
         }
 
-        function previousCard() {
-            if (currentIndex > 0) {
-                currentIndex--;
-                updateCard();
-                updateProgress();
-            }
-        }
+        function updateStats() {
+            let mastered = 0;
+            let learning = 0;
+            let struggling = 0;
 
-        function nextCard() {
-            if (currentIndex < flashcards.length - 1) {
-                currentIndex++;
-                updateCard();
-                updateProgress();
+            for (const card of flashcards) {
+                const score = getCardScore(card);
+                if (score >= 0.8) mastered++;
+                else if (score >= 0.4) learning++;
+                else struggling++;
             }
-        }
 
-        function resetProgress() {
-            currentIndex = 0;
-            updateCard();
-            updateProgress();
+            document.getElementById('stats').innerHTML =
+                `Mastered: ${mastered} | Learning: ${learning} | Needs work: ${struggling}`;
         }
 
         function handleCardClick(event) {
-            if (event.target.id === 'guess-input') return;
+            if (event.target.tagName === 'BUTTON') return;
             if (!isFlipped) {
-                checkAnswer();
-            } else {
-                nextCard();
+                flipCard();
             }
         }
 
         document.addEventListener('keydown', function(event) {
             if (document.getElementById('flashcards').style.display === 'block') {
-                if (event.key === 'Enter') {
+                if (event.key === ' ' || event.key === 'Enter') {
                     event.preventDefault();
                     if (!isFlipped) {
-                        checkAnswer();
-                    } else {
-                        nextCard();
+                        flipCard();
                     }
-                } else if (event.key === 'ArrowLeft') {
-                    previousCard();
-                } else if (event.key === 'ArrowRight') {
-                    nextCard();
+                } else if (event.key === 'ArrowLeft' || event.key === '1') {
+                    if (isFlipped) gradeCard(event, false);
+                } else if (event.key === 'ArrowRight' || event.key === '2') {
+                    if (isFlipped) gradeCard(event, true);
                 }
             } else if (event.key === 'Enter') {
                 startPractice();
