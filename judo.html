@@ -421,18 +421,24 @@
             return '';
         }
 
-        function sortCardsByPriority() {
-            // Sort by score (lower = needs more practice)
-            flashcards.sort((a, b) => getCardScore(a) - getCardScore(b));
-
-            // Add some randomization within similar scores
-            for (let i = 0; i < flashcards.length - 1; i++) {
-                const scoreA = getCardScore(flashcards[i]);
-                const scoreB = getCardScore(flashcards[i + 1]);
-                if (Math.abs(scoreA - scoreB) < 0.1 && Math.random() < 0.3) {
-                    [flashcards[i], flashcards[i + 1]] = [flashcards[i + 1], flashcards[i]];
-                }
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
             }
+        }
+
+        function sortCardsByPriority() {
+            // Shuffle first for randomness
+            shuffleArray(flashcards);
+
+            // Then stable sort by score bucket (lower = needs more practice)
+            // Using buckets so cards with similar scores stay randomized
+            flashcards.sort((a, b) => {
+                const scoreA = Math.floor(getCardScore(a) * 5);  // 0-5 buckets
+                const scoreB = Math.floor(getCardScore(b) * 5);
+                return scoreA - scoreB;
+            });
         }
 
         function startPractice() {
